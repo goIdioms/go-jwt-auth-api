@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/go-playground/validator"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -23,7 +24,7 @@ type SignUpInput struct {
 	Name            string `json:"name" bson:"name" validate:"required,min=2,max=50"`
 	Email           string `json:"email" bson:"email" validate:"required,email"`
 	Password        string `json:"password" bson:"password" validate:"required,min=8,max=100"`
-	ConfirmPasswird string `json:"confirm_password" bson:"confirm_password" validate:"required,min=8,max=100"`
+	PasswordConfirm string `json:"password_confirm" bson:"password_confirm" validate:"required,min=8,max=100"`
 	Photo           string `json:"photo" bson:"photo"`
 }
 
@@ -53,4 +54,27 @@ func FilteredUserResponse(user *User) UserResponse {
 		CreatedAt: *user.CreatedAt,
 		UpdatedAt: *user.UpdatedAt,
 	}
+}
+
+var validate = validator.New()
+
+type ErrorResponse struct {
+	Field string `json:"field"`
+	Tag   string `json:"tag"`
+	Value string `json:"value"`
+}
+
+func ValidateStruct[T any](payload T) []*ErrorResponse {
+	var errors []*ErrorResponse
+	err := validate.Struct(payload)
+	if err != nil {
+		for _, err := range err.(validator.ValidationErrors) {
+			var element ErrorResponse
+			element.Field = err.Namespace()
+			element.Tag = err.Tag()
+			element.Value = err.Param()
+			errors = append(errors, &element)
+		}
+	}
+	return errors
 }
