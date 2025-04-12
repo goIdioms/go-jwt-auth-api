@@ -69,11 +69,12 @@ func ValidateStruct[T any](payload T) []*ErrorResponse {
 	err := validate.Struct(payload)
 	if err != nil {
 		for _, err := range err.(validator.ValidationErrors) {
-			var element ErrorResponse
-			element.Field = err.Namespace()
-			element.Tag = err.Tag()
-			element.Value = err.Param()
-			errors = append(errors, &element)
+			errors = append(errors, &ErrorResponse{
+				Field: err.Field(),
+				Tag:   err.Tag(),
+				Value: err.Param(),
+			})
+
 		}
 	}
 	return errors

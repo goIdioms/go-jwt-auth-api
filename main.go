@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"test/controllers"
 	"test/database"
+	"test/repository"
+	"test/services"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -73,20 +76,20 @@ func main() {
 	}
 	defer mongoclient.Disconnect(ctx)
 
-	value, err := redisclient.Get(ctx, "test").Result()
-	if err == redis.Nil {
-		fmt.Println("key: test does not exist")
-	} else if err != nil {
-		panic(err)
-	}
+	// value, err := redisclient.Get(ctx, "test").Result()
+	// if err == redis.Nil {
+	// 	fmt.Println("key: test does not exist")
+	// } else if err != nil {
+	// 	panic(err)
+	// }
+
+	collection := mongoclient.Database("golang_mongodb").Collection("users")
+	authRepo := repository.NewAuthRepository(collection)
+	authService := services.NewAuthService(authRepo)
+	authController := controllers.NewAuthController(authService)
 
 	api := app.Group("/api")
-	api.Get("/healthchecker", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"status":  "success",
-			"message": value,
-		})
-	})
+	api.Post("/sign-up", authController.SignUpUser)
 
 	log.Fatal(app.Listen(":" + config.Port))
 }

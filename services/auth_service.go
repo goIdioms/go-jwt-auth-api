@@ -1,10 +1,8 @@
 package services
 
 import (
-	"context"
 	"test/models"
-
-	"go.mongodb.org/mongo-driver/mongo"
+	"test/repository"
 )
 
 type AuthService interface {
@@ -13,13 +11,17 @@ type AuthService interface {
 }
 
 type AuthServiceImpl struct {
-	collection *mongo.Collection
-	ctx        context.Context
+	userRepo repository.AuthRepository
 }
 
-func NewAuthService(collection *mongo.Collection, ctx context.Context) *AuthServiceImpl {
-	return &AuthServiceImpl{
-		collection: collection,
-		ctx:        ctx,
-	}
+func NewAuthService(repo repository.AuthRepository) AuthService {
+	return &AuthServiceImpl{userRepo: repo}
+}
+
+func (s *AuthServiceImpl) SignUpUser(input *models.SignUpInput) (*models.UserResponse, error) {
+	return s.userRepo.SignUpUser(input)
+}
+
+func (s *AuthServiceImpl) SignInUser(input *models.SignInInput) (*models.UserResponse, error) {
+	return s.userRepo.SignInUser(input)
 }
