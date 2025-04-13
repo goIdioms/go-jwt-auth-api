@@ -8,16 +8,16 @@ import (
 )
 
 type User struct {
-	ID        *primitive.ObjectID `json:"_id" bson:"_id"`
-	Name      string              `json:"name" bson:"name" validate:"required,min=2,max=50"`
-	Email     string              `json:"email" bson:"email" validate:"required,email"`
-	Password  string              `json:"password" bson:"password" validate:"required,min=8,max=100"`
-	Provider  *string             `json:"provider" bson:"provider"`
-	Role      *string             `json:"role" bson:"role"`
-	Photo     *string             `json:"photo" bson:"photo"`
-	Verified  *bool               `json:"verified" bson:"verified"`
-	CreatedAt *time.Time          `json:"created_at" bson:"created_at"`
-	UpdatedAt *time.Time          `json:"updated_at" bson:"updated_at"`
+	ID        primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
+	Name      string             `json:"name" bson:"name" validate:"required,min=2,max=50"`
+	Email     string             `json:"email" bson:"email" validate:"required,email"`
+	Password  string             `json:"password" bson:"password" validate:"required,min=8,max=100"`
+	Provider  string             `json:"provider" bson:"provider"`
+	Role      string             `json:"role" bson:"role"`
+	Photo     string             `json:"photo" bson:"photo"`
+	Verified  bool               `json:"verified" bson:"verified"`
+	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt time.Time          `json:"updated_at" bson:"updated_at"`
 }
 
 type SignUpInput struct {
@@ -46,13 +46,13 @@ type UserResponse struct {
 
 func FilteredUserResponse(user *User) UserResponse {
 	return UserResponse{
-		ID:        *user.ID,
+		ID:        user.ID,
 		Email:     user.Email,
 		Name:      user.Name,
-		Role:      *user.Photo,
-		Provider:  *user.Provider,
-		CreatedAt: *user.CreatedAt,
-		UpdatedAt: *user.UpdatedAt,
+		Role:      user.Photo,
+		Provider:  user.Provider,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
 	}
 }
 

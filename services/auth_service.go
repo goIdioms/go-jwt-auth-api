@@ -1,13 +1,18 @@
 package services
 
 import (
+	"fmt"
+	"strings"
 	"test/models"
 	"test/repository"
+	"test/utils"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type AuthService interface {
-	SignUpUser(*models.SignUpInput) (*models.UserResponse, error)
-	SignInUser(*models.SignInInput) (*models.UserResponse, error)
+	SignUpUser(payload *models.SignUpInput) (*models.User, error)
+	SignInUser(payload *models.SignInInput) (*models.UserResponse, error)
 }
 
 type AuthServiceImpl struct {
@@ -18,10 +23,27 @@ func NewAuthService(repo repository.AuthRepository) AuthService {
 	return &AuthServiceImpl{userRepo: repo}
 }
 
-func (s *AuthServiceImpl) SignUpUser(input *models.SignUpInput) (*models.UserResponse, error) {
-	return s.userRepo.SignUpUser(input)
+func (s *AuthServiceImpl) SignUpUser(payload *models.SignUpInput) (*models.User, error) {
+	hashedPassword, err := utils.HashPassword(payload.Password)
+	if err != nil {
+		return nil, fmt.Errorf("error hashing password: %v", err)
+	}
+
+	newUser := models.User{
+		ID:       primitive.NewObjectID(),
+		Name:     payload.Name,
+		Email:    strings.ToLower(payload.Email),
+		Password: string(hashedPassword),
+		Photo:    payload.Photo,
+	}
+	result, err := s.userRepo.SignUpUser(&newUser)
+	if err != nil {
+		return nil, fmt.Errorf("error creating user: %v", err)
+	}
+
+	return result, nil
 }
 
-func (s *AuthServiceImpl) SignInUser(input *models.SignInInput) (*models.UserResponse, error) {
-	return s.userRepo.SignInUser(input)
+func (s *AuthServiceImpl) SignInUser(payload *models.SignInInput) (*models.UserResponse, error) {
+	return nil, nil
 }

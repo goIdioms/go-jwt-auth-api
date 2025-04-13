@@ -84,7 +84,7 @@ func main() {
 	// }
 
 	collection := mongoclient.Database("golang_mongodb").Collection("users")
-	authRepo := repository.NewAuthRepository(collection)
+	authRepo := repository.NewAuthRepository(collection, ctx)
 	authService := services.NewAuthService(authRepo)
 	authController := controllers.NewAuthController(authService)
 

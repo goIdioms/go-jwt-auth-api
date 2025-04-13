@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"test/models"
 	"test/services"
 
@@ -16,7 +17,7 @@ func NewAuthController(service services.AuthService) *AuthController {
 }
 
 func (ac *AuthController) SignUpUser(c *fiber.Ctx) error {
-	var payload *models.SignUpInput
+	payload := new(models.SignUpInput)
 
 	if err := c.BodyParser(&payload); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -25,24 +26,40 @@ func (ac *AuthController) SignUpUser(c *fiber.Ctx) error {
 		})
 	}
 
-	erroros := models.ValidateStruct(payload)
-	if erroros != nil {
+	errors := models.ValidateStruct(payload)
+	if errors != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"stattus": "fail",
-			"message": "Password do not match",
+			"status": "fail",
+			"errors": errors,
 		})
 	}
 
 	user, err := ac.AuthService.SignUpUser(payload)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"stattus": "fail",
-			"message": err.Error(),
+		return fmt.Errorf("error creating user: %v", err)
+	}
+	// if err != nil {
+	// 	if strings.Contains(err.Error(), "duplicate key") {
+	// 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+	// 			"status":  "fail",
+	// 			"message": "User with that email already exists",
+	// 		})
+	// 	}
+	// 	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+	// 		"status":  "error",
+	// 		"message": err.Error(),
+	// 	})
+	// }
+
+	if user == nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "User creation failed",
 		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"stattus": "success",
-		"user":    user,
+		"status": "success",
+		"user":   models.FilteredUserResponse(user),
 	})
 }
