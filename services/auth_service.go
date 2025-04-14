@@ -66,10 +66,10 @@ func (s *AuthServiceImpl) SignInUser(payload *models.SignInInput) (string, error
 	now := time.Now().UTC()
 	claims := tokenByte.Claims.(jwt.MapClaims)
 
-	claims["sub"] = user.ID
-	claims["exp"] = now.Add(config.JwtExpiresIn).Unix()
-	claims["iat"] = now.Unix()
-	claims["nbf"] = now.Unix()
+	claims["sub"] = user.ID                             // идентификатор пользователя
+	claims["exp"] = now.Add(config.JwtExpiresIn).Unix() // время истечения срока действия токена
+	claims["iat"] = now.Unix()                          // время создания токена
+	claims["nbf"] = now.Unix()                          // время, до которого токен действителен
 
 	tokenString, err := tokenByte.SignedString([]byte(config.JwtSecret))
 
