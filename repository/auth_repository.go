@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 	"test/models"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -11,7 +12,7 @@ import (
 
 type AuthRepository interface {
 	SignUpUser(*models.User) (*models.User, error)
-	SignInUser(*models.User) (*models.User, error)
+	SignInUser(*models.SignInInput) (*models.User, error)
 }
 
 type AuthRepositoryImpl struct {
@@ -24,7 +25,6 @@ func NewAuthRepository(collection *mongo.Collection, ctx context.Context) AuthRe
 }
 
 func (r *AuthRepositoryImpl) SignUpUser(payload *models.User) (*models.User, error) {
-
 	res, err := r.collection.InsertOne(r.ctx, payload)
 	if err != nil {
 		fmt.Println(err)
@@ -41,6 +41,10 @@ func (r *AuthRepositoryImpl) SignUpUser(payload *models.User) (*models.User, err
 	return &user, nil
 }
 
-func (r *AuthRepositoryImpl) SignInUser(payload *models.User) (*models.User, error) {
-	return nil, nil
+func (r *AuthRepositoryImpl) SignInUser(payload *models.SignInInput) (*models.User, error) {
+	var user models.User
+	filter := bson.M{"email": strings.ToLower(payload.Email)}
+	err := r.collection.FindOne(r.ctx, filter).Decode(&user)
+
+	return &user, err
 }

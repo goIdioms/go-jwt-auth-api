@@ -90,6 +90,7 @@ func main() {
 
 	api := app.Group("/api")
 	api.Post("/sign-up", authController.SignUpUser)
+	api.Post("/sign-in", authController.SignInUser)
 
 	log.Fatal(app.Listen(":" + config.Port))
 }

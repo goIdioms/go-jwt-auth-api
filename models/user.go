@@ -49,7 +49,7 @@ func FilteredUserResponse(user *User) UserResponse {
 		ID:        user.ID,
 		Email:     user.Email,
 		Name:      user.Name,
-		Role:      user.Photo,
+		Role:      user.Role,
 		Provider:  user.Provider,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,

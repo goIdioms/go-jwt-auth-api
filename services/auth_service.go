@@ -3,16 +3,19 @@ package services
 import (
 	"fmt"
 	"strings"
+	"test/database"
 	"test/models"
 	"test/repository"
 	"test/utils"
+	"time"
 
+	"github.com/golang-jwt/jwt"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type AuthService interface {
 	SignUpUser(payload *models.SignUpInput) (*models.User, error)
-	SignInUser(payload *models.SignInInput) (*models.UserResponse, error)
+	SignInUser(payload *models.SignInInput) (string, error)
 }
 
 type AuthServiceImpl struct {
@@ -44,6 +47,31 @@ func (s *AuthServiceImpl) SignUpUser(payload *models.SignUpInput) (*models.User,
 	return result, nil
 }
 
-func (s *AuthServiceImpl) SignInUser(payload *models.SignInInput) (*models.UserResponse, error) {
-	return nil, nil
+func (s *AuthServiceImpl) SignInUser(payload *models.SignInInput) (string, error) {
+	user, err := s.userRepo.SignInUser(payload)
+	if err != nil {
+		if err.Error() == "mongo: no documents in result" {
+			return "", fmt.Errorf("invalid email or password")
+		}
+		return "", err
+	}
+
+	err = utils.CompareHashAndPassword(user.Password, payload.Password)
+	if err != nil {
+		return "", fmt.Errorf("invalid email or password")
+	}
+
+	config, _ := database.LoadConfig(".")
+	tokenByte := jwt.New(jwt.SigningMethodHS256)
+	now := time.Now().UTC()
+	claims := tokenByte.Claims.(jwt.MapClaims)
+
+	claims["sub"] = user.ID
+	claims["exp"] = now.Add(config.JwtExpiresIn).Unix()
+	claims["iat"] = now.Unix()
+	claims["nbf"] = now.Unix()
+
+	tokenString, err := tokenByte.SignedString([]byte(config.JwtSecret))
+
+	return tokenString, err
 }
