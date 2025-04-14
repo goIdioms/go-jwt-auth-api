@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type Config struct {
@@ -15,6 +16,8 @@ type Config struct {
 	JwtMaxAge    int           `mapstructure:"JWT_MAXAGE"`
 	ClientOrigin string        `mapstructure:"CLIENT_ORIGIN"`
 }
+
+var UserCollection *mongo.Collection
 
 func LoadConfig(path string) (config Config, err error) {
 	viper.AddConfigPath(path)

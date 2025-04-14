@@ -11,10 +11,9 @@ import (
 	"github.com/golang-jwt/jwt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func DeserializeUser(c *fiber.Ctx, collection *mongo.Collection) error {
+func DeserializeUser(c *fiber.Ctx) error {
 	var tokenString string
 	authorization := c.Get("Authorization")
 
@@ -56,13 +55,22 @@ func DeserializeUser(c *fiber.Ctx, collection *mongo.Collection) error {
 		})
 	}
 	filter := bson.M{"_id": objectID}
-	err = collection.FindOne(context.Background(), filter).Decode(&user)
-	if user.ID.String() != claims["sub"] {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"status": "fail", "message": "the user belonging to this token no logger exists"})
+	err = database.UserCollection.FindOne(context.Background(), filter).Decode(&user)
+	if err != nil {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"status":  "fail",
+			"message": "The user belonging to this token no longer exists",
+		})
+	}
+
+	if user.ID.Hex() != fmt.Sprint(claims["sub"]) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"status":  "fail",
+			"message": "The user belonging to this token no longer exists",
+		})
 	}
 
 	c.Locals("user", models.FilteredUserResponse(&user))
-
 	c.Next()
 	return nil
 }

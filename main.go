@@ -83,8 +83,10 @@ func main() {
 	// 	panic(err)
 	// }
 
-	collection := mongoclient.Database("golang_mongodb").Collection("users")
-	authRepo := repository.NewAuthRepository(collection, ctx)
+	mongoDB := mongoclient.Database("golang_mongodb")
+	database.UserCollection = mongoDB.Collection("users")
+
+	authRepo := repository.NewAuthRepository(ctx)
 	authService := services.NewAuthService(authRepo)
 	authController := controllers.NewAuthController(authService)
 

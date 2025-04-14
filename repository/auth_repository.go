@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"test/database"
 	"test/models"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type AuthRepository interface {
@@ -16,16 +16,15 @@ type AuthRepository interface {
 }
 
 type AuthRepositoryImpl struct {
-	collection *mongo.Collection
-	ctx        context.Context
+	ctx context.Context
 }
 
-func NewAuthRepository(collection *mongo.Collection, ctx context.Context) AuthRepository {
-	return &AuthRepositoryImpl{collection, ctx}
+func NewAuthRepository(ctx context.Context) AuthRepository {
+	return &AuthRepositoryImpl{ctx}
 }
 
 func (r *AuthRepositoryImpl) SignUpUser(payload *models.User) (*models.User, error) {
-	res, err := r.collection.InsertOne(r.ctx, payload)
+	res, err := database.UserCollection.InsertOne(r.ctx, payload)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -33,7 +32,7 @@ func (r *AuthRepositoryImpl) SignUpUser(payload *models.User) (*models.User, err
 
 	var user models.User
 	query := bson.M{"_id": res.InsertedID}
-	err = r.collection.FindOne(r.ctx, query).Decode(&user)
+	err = database.UserCollection.FindOne(r.ctx, query).Decode(&user)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +43,7 @@ func (r *AuthRepositoryImpl) SignUpUser(payload *models.User) (*models.User, err
 func (r *AuthRepositoryImpl) SignInUser(payload *models.SignInInput) (*models.User, error) {
 	var user models.User
 	filter := bson.M{"email": strings.ToLower(payload.Email)}
-	err := r.collection.FindOne(r.ctx, filter).Decode(&user)
+	err := database.UserCollection.FindOne(r.ctx, filter).Decode(&user)
 
 	return &user, err
 }
