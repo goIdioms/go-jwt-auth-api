@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	_ "github.com/lib/pq"
@@ -90,9 +91,33 @@ func main() {
 	authService := services.NewAuthService(authRepo)
 	authController := controllers.NewAuthController(authService)
 
-	api := app.Group("/api")
-	api.Post("/sign-up", authController.SignUpUser)
-	api.Post("/sign-in", authController.SignInUser)
+	app := fiber.New()
+	micro := fiber.New()
+	SetupRoutes(micro, authController)
+
+	app.Mount("/api", micro)
+	app.Use(logger.New())
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     "http://localhost:3000",
+		AllowHeaders:     "Origin, Content-Type, Accept",
+		AllowMethods:     "GET, POST",
+		AllowCredentials: true,
+	}))
+
+	micro.Get("/healthchecker", func(c *fiber.Ctx) error {
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"status":  "success",
+			"message": "JSON Web Token Authentication and Authorization in Golang",
+		})
+	})
+
+	app.All("*", func(c *fiber.Ctx) error {
+		path := c.Path()
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"status":  "fail",
+			"message": fmt.Sprintf("Path: %v does not exists on this server", path),
+		})
+	})
 
 	log.Fatal(app.Listen(":" + config.Port))
 }

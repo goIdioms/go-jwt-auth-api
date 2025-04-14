@@ -70,6 +70,7 @@ func (s *AuthServiceImpl) SignInUser(payload *models.SignInInput) (string, error
 	claims["exp"] = now.Add(config.JwtExpiresIn).Unix() // время истечения срока действия токена
 	claims["iat"] = now.Unix()                          // время создания токена
 	claims["nbf"] = now.Unix()                          // время, до которого токен действителен
+	claims["exp"] = now.Add(24 * time.Hour).Unix()
 
 	tokenString, err := tokenByte.SignedString([]byte(config.JwtSecret))
 
