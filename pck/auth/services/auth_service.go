@@ -3,10 +3,9 @@ package services
 import (
 	"fmt"
 	"strings"
-	"test/internal/auth/repository"
-	"test/internal/models"
-	jwt "test/pkg/jwt"
-	utils "test/pkg/security"
+	"test/pck/auth/repository"
+	"test/pck/models"
+	"test/pck/utils"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -59,7 +58,7 @@ func (s *AuthServiceImpl) SignInUser(payload *models.SignInInput) (string, error
 		return "", fmt.Errorf("invalid email or password")
 	}
 
-	tokenString, err := jwt.GenerateToken(user)
+	tokenString, err := utils.GenerateToken(user)
 
 	return tokenString, err
 }

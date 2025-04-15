@@ -1,10 +1,11 @@
 package router
 
 import (
-	"test/internal/auth/controllers"
+	"test/pck/auth/controllers"
+
+	"test/pck/middleware"
 
 	"github.com/gofiber/fiber/v2"
-	"test/internal/middleware"
 )
 
 func SetupRoutes(app fiber.Router, authController *controllers.AuthController) {

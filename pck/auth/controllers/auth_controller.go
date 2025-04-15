@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"test/internal/auth/services"
-	"test/internal/database"
-	"test/internal/models"
+	"test/pck/auth/services"
+	"test/pck/database"
+	"test/pck/models"
+	"test/pck/validator"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -32,7 +33,7 @@ func (ac *AuthController) SignUpUser(c *fiber.Ctx) error {
 		})
 	}
 
-	errors := models.ValidateStruct(payload)
+	errors := validator.ValidateStruct(payload)
 	if errors != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status": "fail",
@@ -61,7 +62,7 @@ func (ac *AuthController) SignInUser(c *fiber.Ctx) error {
 		})
 	}
 
-	errors := models.ValidateStruct(payload)
+	errors := validator.ValidateStruct(payload)
 	if errors != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status": "fail",

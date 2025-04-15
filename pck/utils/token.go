@@ -1,8 +1,8 @@
 package utils
 
 import (
-	"test/internal/database"
-	"test/internal/models"
+	"test/pck/database"
+	"test/pck/models"
 	"time"
 
 	"github.com/golang-jwt/jwt"

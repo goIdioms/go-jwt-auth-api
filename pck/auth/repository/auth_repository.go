@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"test/internal/database"
-	"test/internal/models"
+	"test/pck/database"
+	"test/pck/models"
 
 	"go.mongodb.org/mongo-driver/bson"
 )
