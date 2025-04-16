@@ -7,6 +7,7 @@ import (
 	"test/pck/auth/services"
 	"test/pck/database"
 	"test/pck/models"
+	"test/pck/utils"
 	"test/pck/validator"
 	"time"
 
@@ -100,6 +101,57 @@ func (ac *AuthController) SignInUser(c *fiber.Ctx) error {
 		"status":        "success",
 		"access_token":  tokens.AccessToken,
 		"refresh_token": tokens.RefreshToken,
+	})
+}
+
+func (ac *AuthController) RefreshToken(c *fiber.Ctx) error {
+	user := c.Locals("user").(*models.User)
+
+	config, _ := database.LoadConfig(".")
+	accessToken, err := utils.GenerateToken(
+		config.AccessJwtExpiresIn,
+		user.ID.Hex(),
+		config.AccessJwtSecret,
+	)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"status":  "fail",
+			"message": fmt.Sprintf("generating access token failed: %v", err),
+		})
+	}
+	refreshToken, err := utils.GenerateToken(
+		config.RefreshJwtExpiresIn,
+		user.ID.Hex(),
+		config.RefreshJwtSecret,
+	)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"status":  "fail",
+			"message": fmt.Sprintf("generating refresh token failed: %v", err),
+		})
+	}
+
+	c.Cookie(&fiber.Cookie{
+		Name:     "access_token",
+		Value:    accessToken,
+		Path:     "/",
+		MaxAge:   config.AccessJwtMaxAge * 60,
+		Secure:   false,
+		HTTPOnly: true,
+	})
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		Path:     "/",
+		MaxAge:   config.RefreshJwtMaxAge * 60,
+		Secure:   false,
+		HTTPOnly: true,
+	})
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":        "success",
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
 	})
 }
 

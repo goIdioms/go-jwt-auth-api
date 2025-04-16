@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"fmt"
-	"strings"
 	"test/pck/database"
 	"test/pck/models"
 
@@ -14,36 +13,29 @@ import (
 )
 
 func DeserializeUser(c *fiber.Ctx) error {
-	var tokenString string
-	authorization := c.Get("Authorization")
-
-	if strings.HasPrefix(authorization, "Bearer ") {
-		tokenString = strings.TrimPrefix(authorization, "Bearer ")
-	} else if c.Cookies("access_token") != "" {
-		tokenString = c.Cookies("access_token")
-	}
-
+	tokenString := c.Cookies("refresh_token")
 	if tokenString == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"status":  "fail",
-			"message": "Authorization token is missing",
+			"message": "Refresh token is missing",
 		})
 	}
 
-	config, _ := database.LoadConfig(".")
-	tokenByte, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %s", token.Header["alg"])
-		}
-		return []byte(config.AccessJwtSecret), nil
-	})
+	parser := new(jwt.Parser)
+	token, _, err := parser.ParseUnverified(tokenString, jwt.MapClaims{})
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"status": "fail", "message": fmt.Sprintf("invalidate token: %v", err)})
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"status":  "fail",
+			"message": "Invalid refresh token format",
+		})
 	}
 
-	claims, ok := tokenByte.Claims.(jwt.MapClaims)
-	if !ok || !tokenByte.Valid {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"status": "fail", "message": "invalidate token"})
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"status":  "fail",
+			"message": "Invalid refresh token claims",
+		})
 	}
 
 	var user models.User
@@ -54,16 +46,10 @@ func DeserializeUser(c *fiber.Ctx) error {
 			"message": "Invalid token subject",
 		})
 	}
+
 	filter := bson.M{"_id": objectID}
 	err = database.UserCollection.FindOne(context.Background(), filter).Decode(&user)
 	if err != nil {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"status":  "fail",
-			"message": "The user belonging to this token no longer exists",
-		})
-	}
-
-	if user.ID.Hex() != fmt.Sprint(claims["sub"]) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"status":  "fail",
 			"message": "The user belonging to this token no longer exists",
