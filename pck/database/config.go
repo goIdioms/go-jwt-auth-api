@@ -8,13 +8,16 @@ import (
 )
 
 type Config struct {
-	DBUri        string        `mapstructure:"MONGODB_LOCAL_URI"`
-	RedisUri     string        `mapstructure:"REDIS_URL"`
-	Port         string        `mapstructure:"PORT"`
-	JwtSecret    string        `mapstructure:"JWT_SECRET"`
-	JwtExpiresIn time.Duration `mapstructure:"JWT_EXPIRED_IN"`
-	JwtMaxAge    int           `mapstructure:"JWT_MAXAGE"`
-	ClientOrigin string        `mapstructure:"CLIENT_ORIGIN"`
+	DBUri               string        `mapstructure:"MONGODB_LOCAL_URI"`
+	RedisUri            string        `mapstructure:"REDIS_URL"`
+	Port                string        `mapstructure:"PORT"`
+	AccessJwtSecret     string        `mapstructure:"ACCESS_JWT_SECRET"`
+	AccessJwtExpiresIn  time.Duration `mapstructure:"ACCESS_JWT_EXPIRED_IN"`
+	AccessJwtMaxAge     int           `mapstructure:"ACCESS_JWT_MAXAGE"`
+	RefreshJwtSecret    string        `mapstructure:"REFRESH_JWT_SECRET"`
+	RefreshJwtExpiresIn time.Duration `mapstructure:"REFRESH_JWT_EXPIRED_IN"`
+	RefreshJwtMaxAge    int           `mapstructure:"REFRESH_JWT_MAXAGE"`
+	ClientOrigin        string        `mapstructure:"CLIENT_ORIGIN"`
 }
 
 var UserCollection *mongo.Collection

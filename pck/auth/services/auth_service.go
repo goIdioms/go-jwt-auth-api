@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"test/pck/auth/repository"
+	"test/pck/database"
 	"test/pck/models"
 	"test/pck/utils"
 
@@ -12,7 +13,7 @@ import (
 
 type AuthService interface {
 	SignUpUser(payload *models.SignUpInput) (*models.User, error)
-	SignInUser(payload *models.SignInInput) (string, error)
+	SignInUser(payload *models.SignInInput) (*models.Tokens, error)
 }
 
 type AuthServiceImpl struct {
@@ -44,21 +45,40 @@ func (s *AuthServiceImpl) SignUpUser(payload *models.SignUpInput) (*models.User,
 	return result, nil
 }
 
-func (s *AuthServiceImpl) SignInUser(payload *models.SignInInput) (string, error) {
+func (s *AuthServiceImpl) SignInUser(payload *models.SignInInput) (*models.Tokens, error) {
 	user, err := s.userRepo.SignInUser(payload)
 	if err != nil {
 		if err.Error() == "mongo: no documents in result" {
-			return "", fmt.Errorf("invalid email or password")
+			return nil, fmt.Errorf("invalid email or password")
 		}
-		return "", err
+		return nil, err
 	}
 
 	err = utils.CompareHashAndPassword(user.Password, payload.Password)
 	if err != nil {
-		return "", fmt.Errorf("invalid email or password")
+		return nil, fmt.Errorf("invalid email or password")
 	}
 
-	tokenString, err := utils.GenerateToken(user)
+	config, _ := database.LoadConfig(".")
+	ttlAccess := config.AccessJwtExpiresIn
+	ttlRefresh := config.RefreshJwtExpiresIn
+	scrAccess := config.AccessJwtSecret
+	scrRefresh := config.RefreshJwtSecret
 
-	return tokenString, err
+	access_token, err := utils.GenerateToken(ttlAccess, user.ID, scrAccess)
+	if err != nil {
+		return nil, fmt.Errorf("error generating access token: %v", err)
+	}
+
+	refresh_token, err := utils.GenerateToken(ttlRefresh, user.ID, scrRefresh)
+	if err != nil {
+		return nil, fmt.Errorf("error generating refresh token: %v", err)
+	}
+
+	tokens := &models.Tokens{
+		AccessToken:  access_token,
+		RefreshToken: refresh_token,
+	}
+
+	return tokens, nil
 }

@@ -70,7 +70,7 @@ func (ac *AuthController) SignInUser(c *fiber.Ctx) error {
 		})
 	}
 
-	token, err := ac.AuthService.SignInUser(payload)
+	tokens, err := ac.AuthService.SignInUser(payload)
 	if err != nil {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"status":  "fail",
@@ -80,27 +80,41 @@ func (ac *AuthController) SignInUser(c *fiber.Ctx) error {
 
 	config, _ := database.LoadConfig(".")
 	c.Cookie(&fiber.Cookie{
-		Name:     "token",
-		Value:    token,
+		Name:     "access_token",
+		Value:    tokens.AccessToken,
 		Path:     "/",
-		MaxAge:   config.JwtMaxAge * 60,
+		MaxAge:   config.AccessJwtMaxAge * 60,
 		Secure:   false,
 		HTTPOnly: true,
-		Domain:   "localhost",
+	})
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    tokens.RefreshToken,
+		Path:     "/",
+		MaxAge:   config.RefreshJwtMaxAge * 60,
+		Secure:   false,
+		HTTPOnly: true,
 	})
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"status": "success",
-		"token":  token,
+		"status":        "success",
+		"access_token":  tokens.AccessToken,
+		"refresh_token": tokens.RefreshToken,
 	})
 }
 
 func (ac *AuthController) LogOutUser(c *fiber.Ctx) error {
-	expired := time.Now().Add(-time.Hour * 24)
 	c.Cookie(&fiber.Cookie{
-		Name:    "token",
-		Value:   "",
-		Expires: expired,
+		Name:     "access_token",
+		Value:    "",
+		Expires:  time.Now().Add(-time.Hour * 24),
+		HTTPOnly: true,
+	})
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Expires:  time.Now().Add(-time.Hour * 24),
+		HTTPOnly: true,
 	})
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success"})
 }

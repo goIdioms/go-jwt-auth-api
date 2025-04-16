@@ -19,8 +19,8 @@ func DeserializeUser(c *fiber.Ctx) error {
 
 	if strings.HasPrefix(authorization, "Bearer ") {
 		tokenString = strings.TrimPrefix(authorization, "Bearer ")
-	} else if c.Cookies("token") != "" {
-		tokenString = c.Cookies("token")
+	} else if c.Cookies("access_token") != "" {
+		tokenString = c.Cookies("access_token")
 	}
 
 	if tokenString == "" {
@@ -35,7 +35,7 @@ func DeserializeUser(c *fiber.Ctx) error {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %s", token.Header["alg"])
 		}
-		return []byte(config.JwtSecret), nil
+		return []byte(config.AccessJwtSecret), nil
 	})
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"status": "fail", "message": fmt.Sprintf("invalidate token: %v", err)})
