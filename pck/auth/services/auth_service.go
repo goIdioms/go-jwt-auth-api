@@ -1,9 +1,11 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"test/pck/auth/repository"
+	"test/pck/cache"
 	"test/pck/database"
 	"test/pck/models"
 	"test/pck/utils"
@@ -18,10 +20,12 @@ type AuthService interface {
 
 type AuthServiceImpl struct {
 	userRepo repository.AuthRepository
+	ctx      context.Context
+	cache    *cache.RedisCache
 }
 
-func NewAuthService(repo repository.AuthRepository) AuthService {
-	return &AuthServiceImpl{userRepo: repo}
+func NewAuthService(ctx context.Context, repo repository.AuthRepository, cache *cache.RedisCache) AuthService {
+	return &AuthServiceImpl{ctx: ctx, userRepo: repo, cache: cache}
 }
 
 func (s *AuthServiceImpl) SignUpUser(payload *models.SignUpInput) (*models.User, error) {
@@ -73,6 +77,10 @@ func (s *AuthServiceImpl) SignInUser(payload *models.SignInInput) (*models.Token
 	refresh_token, err := utils.GenerateToken(ttlRefresh, user.ID, scrRefresh)
 	if err != nil {
 		return nil, fmt.Errorf("error generating refresh token: %v", err)
+	}
+	err = s.cache.Set(s.ctx, "01", string(refresh_token), 0)
+	if err != nil {
+		panic("failed to set refresh token in cache")
 	}
 
 	tokens := &models.Tokens{

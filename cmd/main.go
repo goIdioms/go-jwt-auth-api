@@ -7,11 +7,11 @@ import (
 	"test/pck/auth/controllers"
 	"test/pck/auth/repository"
 	"test/pck/auth/services"
+	"test/pck/cache"
 	"test/pck/database"
 	"test/pck/router"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -26,7 +26,6 @@ var (
 	app         *fiber.App
 	ctx         context.Context
 	mongoclient *mongo.Client
-	redisclient *redis.Client
 )
 
 func init() {
@@ -48,20 +47,6 @@ func init() {
 
 	fmt.Println("Connected to MongoDB successfully")
 
-	redisclient = redis.NewClient(&redis.Options{
-		Addr: config.RedisUri,
-	})
-	if _, err := redisclient.Ping(ctx).Result(); err != nil {
-		panic(err)
-	}
-
-	err = redisclient.Set(ctx, "test", "Redis and MongoDB", 0).Err()
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("Connected to Redis successfully")
-
 	app = fiber.New(fiber.Config{
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -78,18 +63,12 @@ func main() {
 	}
 	defer mongoclient.Disconnect(ctx)
 
-	// value, err := redisclient.Get(ctx, "test").Result()
-	// if err == redis.Nil {
-	// 	fmt.Println("key: test does not exist")
-	// } else if err != nil {
-	// 	panic(err)
-	// }
-
 	mongoDB := mongoclient.Database("golang_mongodb")
 	database.UserCollection = mongoDB.Collection("users")
 
+	redisCache := cache.NewRedisCache(config.RedisUri)
 	authRepo := repository.NewAuthRepository(ctx)
-	authService := services.NewAuthService(authRepo)
+	authService := services.NewAuthService(ctx, authRepo, redisCache)
 	authController := controllers.NewAuthController(authService)
 
 	app := fiber.New()
