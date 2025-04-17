@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"test/pck/cache"
 	"test/pck/database"
 	"test/pck/models"
 
@@ -13,33 +14,58 @@ import (
 )
 
 func DeserializeUser(c *fiber.Ctx) error {
-	tokenString := c.Cookies("refresh_token")
-	if tokenString == "" {
+	// 1. Получаем refresh_token из куки
+	sessionID := c.Cookies("session_id")
+	redisCache := cache.NewRedisCache("localhost:6379")
+	cachedValue, err := redisCache.GetRefreshToken(c.Context(), sessionID)
+	if err != nil || cachedValue == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"status":  "fail",
+			"message": "Invalid or expired session",
+		})
+	}
+
+	if sessionID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"status":  "fail",
 			"message": "Refresh token is missing",
 		})
 	}
 
-	parser := new(jwt.Parser)
-	token, _, err := parser.ParseUnverified(tokenString, jwt.MapClaims{})
+	config, err := database.LoadConfig(".")
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"status":  "fail",
-			"message": "Invalid refresh token format",
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to load config",
 		})
 	}
 
+	token, err := jwt.Parse(cachedValue.RefreshToken, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return []byte(config.RefreshJwtSecret), nil
+	})
+
+	if err != nil || !token.Valid {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"status":  "fail",
+			"message": "Invalid or expired refresh token",
+		})
+	}
+
+	// 4. Получаем claims
 	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
+	if !ok || claims["sub"] == nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"status":  "fail",
 			"message": "Invalid refresh token claims",
 		})
 	}
 
-	var user models.User
-	objectID, err := primitive.ObjectIDFromHex(fmt.Sprint(claims["sub"]))
+	// 5. Получаем user из БД по ID
+	userID := fmt.Sprint(claims["sub"])
+	objectID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"status":  "fail",
@@ -47,15 +73,16 @@ func DeserializeUser(c *fiber.Ctx) error {
 		})
 	}
 
-	filter := bson.M{"_id": objectID}
-	err = database.UserCollection.FindOne(context.Background(), filter).Decode(&user)
+	var user models.User
+	err = database.UserCollection.FindOne(context.TODO(), bson.M{"_id": objectID}).Decode(&user)
 	if err != nil {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"status":  "fail",
-			"message": "The user belonging to this token no longer exists",
+			"message": "User not found",
 		})
 	}
 
+	// 6. Устанавливаем пользователя в контекст
 	c.Locals("user", &user)
 	return c.Next()
 }

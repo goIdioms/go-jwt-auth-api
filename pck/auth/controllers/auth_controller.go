@@ -201,7 +201,7 @@ func (ac *AuthController) LogOutUser(c *fiber.Ctx) error {
 		HTTPOnly: true,
 	})
 	c.Cookie(&fiber.Cookie{
-		Name:     "refresh_token",
+		Name:     "session_id",
 		Value:    "",
 		Expires:  time.Now().Add(-time.Hour * 24),
 		HTTPOnly: true,
