@@ -9,6 +9,7 @@ import (
 	"test/pck/database"
 	"test/pck/models"
 	"test/pck/utils"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -69,23 +70,43 @@ func (s *AuthServiceImpl) SignInUser(payload *models.SignInInput) (*models.Token
 	scrAccess := config.AccessJwtSecret
 	scrRefresh := config.RefreshJwtSecret
 
-	access_token, err := utils.GenerateToken(ttlAccess, user.ID, scrAccess)
+	accessToken, err := utils.GenerateToken(ttlAccess, user.ID, scrAccess)
 	if err != nil {
 		return nil, fmt.Errorf("error generating access token: %v", err)
 	}
 
-	refresh_token, err := utils.GenerateToken(ttlRefresh, user.ID, scrRefresh)
+	existingRefreshToken, err := s.cache.GetRefreshToken(s.ctx, user.ID.Hex())
+	fmt.Println("try get from cache")
+	if err != nil {
+		return nil, fmt.Errorf("error getting refresh token: %v", err)
+	}
+	if existingRefreshToken != nil {
+		fmt.Println("get from cache:", existingRefreshToken.RefreshToken)
+		return &models.Tokens{
+			AccessToken:  accessToken,
+			RefreshToken: existingRefreshToken.RefreshToken,
+		}, nil
+	}
+
+	fmt.Println("no cache, generate new refresh token")
+	newRefreshToken, err := utils.GenerateToken(ttlRefresh, user.ID, scrRefresh)
 	if err != nil {
 		return nil, fmt.Errorf("error generating refresh token: %v", err)
 	}
-	err = s.cache.Set(s.ctx, "01", string(refresh_token), 0)
+
+	value := cache.CacheValue{
+		UserID:       user.ID.Hex(),
+		RefreshToken: newRefreshToken,
+	}
+	err = s.cache.SaveRefreshToken(s.ctx, user.ID.Hex(), value, time.Duration(ttlRefresh))
+	fmt.Println("save to cache")
 	if err != nil {
-		panic("failed to set refresh token in cache")
+		return nil, fmt.Errorf("error saving refresh token: %v", err)
 	}
 
 	tokens := &models.Tokens{
-		AccessToken:  access_token,
-		RefreshToken: refresh_token,
+		AccessToken:  accessToken,
+		RefreshToken: newRefreshToken,
 	}
 
 	return tokens, nil
