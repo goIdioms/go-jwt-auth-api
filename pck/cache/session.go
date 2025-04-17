@@ -16,18 +16,18 @@ type CacheValue struct {
 
 const refreshPrefix = "refresh_token:"
 
-func (r *RedisCache) SaveRefreshToken(ctx context.Context, tokenID string, value CacheValue, ttl time.Duration) error {
+func (r *RedisCache) SaveRefreshToken(ctx context.Context, sessionID string, value CacheValue, ttl time.Duration) error {
 	data, err := json.Marshal(value)
 	if err != nil {
 		return fmt.Errorf("failed to marshal cache value: %w", err)
 	}
-	tokenID = refreshPrefix + tokenID
-	return r.rdb.Set(ctx, tokenID, data, ttl).Err()
+	key := refreshPrefix + sessionID
+	return r.rdb.Set(ctx, key, data, ttl).Err()
 }
 
-func (r *RedisCache) GetRefreshToken(ctx context.Context, tokenID string) (*CacheValue, error) {
-	tokenID = refreshPrefix + tokenID
-	data, err := r.rdb.Get(ctx, tokenID).Result()
+func (r *RedisCache) GetRefreshToken(ctx context.Context, sessionID string) (*CacheValue, error) {
+	key := refreshPrefix + sessionID
+	data, err := r.rdb.Get(ctx, key).Result()
 	if err == redis.Nil {
 		return nil, nil
 	}
@@ -42,7 +42,7 @@ func (r *RedisCache) GetRefreshToken(ctx context.Context, tokenID string) (*Cach
 	return &value, nil
 }
 
-func (r *RedisCache) DeleteRefreshToken(ctx context.Context, tokenID string) error {
-	tokenID = refreshPrefix + tokenID
-	return r.rdb.Del(ctx, tokenID).Err()
+func (r *RedisCache) DeleteRefreshToken(ctx context.Context, sessionID string) error {
+	key := refreshPrefix + sessionID
+	return r.rdb.Del(ctx, key).Err()
 }

@@ -69,7 +69,7 @@ func main() {
 	redisCache := cache.NewRedisCache(config.RedisUri)
 	authRepo := repository.NewAuthRepository(ctx)
 	authService := services.NewAuthService(ctx, authRepo, redisCache)
-	authController := controllers.NewAuthController(authService)
+	authController := controllers.NewAuthController(authService, redisCache)
 
 	app := fiber.New()
 	micro := fiber.New()

@@ -11,12 +11,14 @@ import (
 	"test/pck/utils"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type AuthService interface {
 	SignUpUser(payload *models.SignUpInput) (*models.User, error)
-	SignInUser(payload *models.SignInInput) (*models.Tokens, error)
+	SignInUser(ctx *fiber.Ctx, payload *models.SignInInput) (*models.Tokens, error)
 }
 
 type AuthServiceImpl struct {
@@ -50,7 +52,7 @@ func (s *AuthServiceImpl) SignUpUser(payload *models.SignUpInput) (*models.User,
 	return result, nil
 }
 
-func (s *AuthServiceImpl) SignInUser(payload *models.SignInInput) (*models.Tokens, error) {
+func (s *AuthServiceImpl) SignInUser(c *fiber.Ctx, payload *models.SignInInput) (*models.Tokens, error) {
 	user, err := s.userRepo.SignInUser(payload)
 	if err != nil {
 		if err.Error() == "mongo: no documents in result" {
@@ -75,36 +77,39 @@ func (s *AuthServiceImpl) SignInUser(payload *models.SignInInput) (*models.Token
 		return nil, fmt.Errorf("error generating access token: %v", err)
 	}
 
-	existingRefreshToken, err := s.cache.GetRefreshToken(s.ctx, user.ID.Hex())
-	fmt.Println("try get from cache")
-	if err != nil {
-		return nil, fmt.Errorf("error getting refresh token: %v", err)
-	}
-	if existingRefreshToken != nil {
-		fmt.Println("get from cache:", existingRefreshToken.RefreshToken)
-		return &models.Tokens{
-			AccessToken:  accessToken,
-			RefreshToken: existingRefreshToken.RefreshToken,
-		}, nil
+	sessionID := c.Cookies("session_id")
+	if sessionID != "" {
+		existingRefreshToken, err := s.cache.GetRefreshToken(c.Context(), sessionID)
+		if err != nil {
+			return nil, fmt.Errorf("error getting refresh token: %v", err)
+		}
+		if existingRefreshToken != nil {
+			return &models.Tokens{
+				SessionID:    sessionID,
+				AccessToken:  accessToken,
+				RefreshToken: existingRefreshToken.RefreshToken,
+			}, nil
+		}
 	}
 
-	fmt.Println("no cache, generate new refresh token")
 	newRefreshToken, err := utils.GenerateToken(ttlRefresh, user.ID, scrRefresh)
 	if err != nil {
 		return nil, fmt.Errorf("error generating refresh token: %v", err)
 	}
 
+	sessionID = uuid.New().String()
 	value := cache.CacheValue{
 		UserID:       user.ID.Hex(),
 		RefreshToken: newRefreshToken,
 	}
-	err = s.cache.SaveRefreshToken(s.ctx, user.ID.Hex(), value, time.Duration(ttlRefresh))
+	err = s.cache.SaveRefreshToken(s.ctx, sessionID, value, time.Duration(ttlRefresh))
 	fmt.Println("save to cache")
 	if err != nil {
 		return nil, fmt.Errorf("error saving refresh token: %v", err)
 	}
 
 	tokens := &models.Tokens{
+		SessionID:    sessionID,
 		AccessToken:  accessToken,
 		RefreshToken: newRefreshToken,
 	}

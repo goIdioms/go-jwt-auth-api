@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"test/pck/auth/services"
+	"test/pck/cache"
 	"test/pck/database"
 	"test/pck/models"
 	"test/pck/utils"
@@ -12,16 +13,18 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type AuthController struct {
 	AuthService services.AuthService
+	cache       *cache.RedisCache
 }
 
-func NewAuthController(service services.AuthService) *AuthController {
-	return &AuthController{AuthService: service}
+func NewAuthController(service services.AuthService, cache *cache.RedisCache) *AuthController {
+	return &AuthController{AuthService: service, cache: cache}
 }
 
 func (ac *AuthController) SignUpUser(c *fiber.Ctx) error {
@@ -71,7 +74,7 @@ func (ac *AuthController) SignInUser(c *fiber.Ctx) error {
 		})
 	}
 
-	tokens, err := ac.AuthService.SignInUser(payload)
+	tokens, err := ac.AuthService.SignInUser(c, payload)
 	if err != nil {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"status":  "fail",
@@ -89,10 +92,10 @@ func (ac *AuthController) SignInUser(c *fiber.Ctx) error {
 		HTTPOnly: true,
 	})
 	c.Cookie(&fiber.Cookie{
-		Name:     "refresh_token",
-		Value:    tokens.RefreshToken,
+		Name:     "session_id",
+		Value:    tokens.SessionID,
 		Path:     "/",
-		MaxAge:   config.RefreshJwtMaxAge * 60,
+		MaxAge:   config.AccessJwtMaxAge * 60,
 		Secure:   false,
 		HTTPOnly: true,
 	})
@@ -106,8 +109,24 @@ func (ac *AuthController) SignInUser(c *fiber.Ctx) error {
 
 func (ac *AuthController) RefreshToken(c *fiber.Ctx) error {
 	user := c.Locals("user").(*models.User)
-
 	config, _ := database.LoadConfig(".")
+
+	currentSessionID := c.Cookies("session_id")
+	if currentSessionID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "fail",
+			"message": "session_id cookie is missing or empty",
+		})
+	}
+
+	cachedRefreshToken, err := ac.cache.GetRefreshToken(c.Context(), currentSessionID)
+	if err != nil || cachedRefreshToken == nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"status":  "fail",
+			"message": fmt.Sprintf("getting refresh token from cache failed: %v", err),
+		})
+	}
+
 	accessToken, err := utils.GenerateToken(
 		config.AccessJwtExpiresIn,
 		user.ID.Hex(),
@@ -131,6 +150,21 @@ func (ac *AuthController) RefreshToken(c *fiber.Ctx) error {
 		})
 	}
 
+	_ = ac.cache.DeleteRefreshToken(c.Context(), currentSessionID)
+	sessionID := uuid.New().String()
+
+	value := cache.CacheValue{
+		UserID:       user.ID.Hex(),
+		RefreshToken: refreshToken,
+	}
+	err = ac.cache.SaveRefreshToken(c.Context(), sessionID, value, time.Duration(config.RefreshJwtMaxAge)*time.Hour)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"status":  "fail",
+			"message": fmt.Sprintf("saving refresh token to cache failed: %v", err),
+		})
+	}
+
 	c.Cookie(&fiber.Cookie{
 		Name:     "access_token",
 		Value:    accessToken,
@@ -140,8 +174,8 @@ func (ac *AuthController) RefreshToken(c *fiber.Ctx) error {
 		HTTPOnly: true,
 	})
 	c.Cookie(&fiber.Cookie{
-		Name:     "refresh_token",
-		Value:    refreshToken,
+		Name:     "session_id",
+		Value:    sessionID,
 		Path:     "/",
 		MaxAge:   config.RefreshJwtMaxAge * 60,
 		Secure:   false,
@@ -156,6 +190,10 @@ func (ac *AuthController) RefreshToken(c *fiber.Ctx) error {
 }
 
 func (ac *AuthController) LogOutUser(c *fiber.Ctx) error {
+	sessionID := c.Cookies("session_id")
+	if sessionID != "" {
+		_ = ac.cache.DeleteRefreshToken(c.Context(), sessionID)
+	}
 	c.Cookie(&fiber.Cookie{
 		Name:     "access_token",
 		Value:    "",
