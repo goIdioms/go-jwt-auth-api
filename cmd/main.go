@@ -12,11 +12,14 @@ import (
 	"test/pck/router"
 	"time"
 
+	_ "test/docs"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	_ "github.com/lib/pq"
+	fiberSwagger "github.com/swaggo/fiber-swagger"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -56,6 +59,26 @@ func init() {
 	app.Use(recover.New())
 }
 
+// @title JWT Authentication API
+// @version 1.0
+// @description API для аутентификации и авторизации с использованием JWT токенов
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.example.com/support
+// @contact.email support@example.com
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:3000
+// @BasePath /api
+// @schemes http
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Используйте формат: "Bearer {token}"
 func main() {
 	config, err := database.LoadConfig(".")
 	if err != nil {
@@ -84,12 +107,22 @@ func main() {
 		AllowCredentials: true,
 	}))
 
+	// HealthCheck godoc
+	// @Summary Проверка работоспособности API
+	// @Description Проверяет, что API работает корректно
+	// @Tags health
+	// @Accept json
+	// @Produce json
+	// @Success 200 {object} map[string]interface{}
+	// @Router /healthchecker [get]
 	micro.Get("/healthchecker", func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
 			"status":  "success",
 			"message": "JSON Web Token Authentication and Authorization in Golang",
 		})
 	})
+
+	app.Get("/swagger/*", fiberSwagger.FiberWrapHandler())
 
 	app.All("*", func(c *fiber.Ctx) error {
 		path := c.Path()

@@ -2,7 +2,6 @@
 
 deps:
 	go mod tidy
-	go mod vendor
 
 build: deps
 	docker-compose build

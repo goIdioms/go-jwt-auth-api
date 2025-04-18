@@ -27,6 +27,15 @@ func NewAuthController(service services.AuthService, cache *cache.RedisCache) *A
 	return &AuthController{AuthService: service, cache: cache}
 }
 
+// @Summary Регистрация пользователя
+// @Description Создает нового пользователя
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param input body models.SignUpInput true "Данные для регистрации"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /sign-up [post]
 func (ac *AuthController) SignUpUser(c *fiber.Ctx) error {
 	payload := new(models.SignUpInput)
 
@@ -56,6 +65,15 @@ func (ac *AuthController) SignUpUser(c *fiber.Ctx) error {
 	})
 }
 
+// @Summary Вход пользователя
+// @Description Аутентификация пользователя и выдача токенов
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param input body models.SignInInput true "Данные для входа"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /sign-in [post]
 func (ac *AuthController) SignInUser(c *fiber.Ctx) error {
 	payload := new(models.SignInInput)
 
@@ -107,6 +125,14 @@ func (ac *AuthController) SignInUser(c *fiber.Ctx) error {
 	})
 }
 
+// @Summary Обновление токена
+// @Description Обновляет access и refresh токены
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /refresh [post]
 func (ac *AuthController) RefreshToken(c *fiber.Ctx) error {
 	user := c.Locals("user").(*models.User)
 	config, _ := database.LoadConfig(".")
@@ -189,6 +215,12 @@ func (ac *AuthController) RefreshToken(c *fiber.Ctx) error {
 	})
 }
 
+// @Summary Выход пользователя
+// @Description Удаляет refresh токен и очищает куки
+// @Tags auth
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /logout [get]
 func (ac *AuthController) LogOutUser(c *fiber.Ctx) error {
 	sessionID := c.Cookies("session_id")
 	if sessionID != "" {
@@ -209,6 +241,12 @@ func (ac *AuthController) LogOutUser(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success"})
 }
 
+// @Summary Получить информацию о себе
+// @Description Возвращает данные текущего пользователя
+// @Tags users
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /users/me [get]
 func (ac *AuthController) GetMeHandler(c *fiber.Ctx) error {
 	user := c.Locals("user").(*models.User)
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -217,6 +255,12 @@ func (ac *AuthController) GetMeHandler(c *fiber.Ctx) error {
 	})
 }
 
+// @Summary Получить список пользователей
+// @Description Доступно только для ролей admin и moderator
+// @Tags users
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /users/ [get]
 func (ac *AuthController) GetUsersHandler(c *fiber.Ctx) error {
 	pageStr := c.Query("page", "1")
 	limitStr := c.Query("limit", "10")
