@@ -1,9 +1,9 @@
 package router
 
 import (
-	"test/pck/auth/controllers"
+	"github.com/goIdioms/go-jwt-auth-api/pck/auth/controllers"
 
-	"test/pck/middleware"
+	"github.com/goIdioms/go-jwt-auth-api/pck/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )

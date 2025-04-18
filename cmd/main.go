@@ -4,15 +4,16 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"test/pck/auth/controllers"
-	"test/pck/auth/repository"
-	"test/pck/auth/services"
-	"test/pck/cache"
-	"test/pck/database"
-	"test/pck/router"
 	"time"
 
-	_ "test/docs"
+	"github.com/goIdioms/go-jwt-auth-api/pck/auth/controllers"
+	"github.com/goIdioms/go-jwt-auth-api/pck/auth/repository"
+	"github.com/goIdioms/go-jwt-auth-api/pck/auth/services"
+	"github.com/goIdioms/go-jwt-auth-api/pck/cache"
+	"github.com/goIdioms/go-jwt-auth-api/pck/database"
+	"github.com/goIdioms/go-jwt-auth-api/pck/router"
+
+	_ "github.com/goIdioms/go-jwt-auth-api/docs"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"

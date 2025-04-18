@@ -3,9 +3,10 @@ package middleware
 import (
 	"context"
 	"fmt"
-	"test/pck/cache"
-	"test/pck/database"
-	"test/pck/models"
+
+	"github.com/goIdioms/go-jwt-auth-api/pck/cache"
+	"github.com/goIdioms/go-jwt-auth-api/pck/database"
+	"github.com/goIdioms/go-jwt-auth-api/pck/models"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt"

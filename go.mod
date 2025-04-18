@@ -1,4 +1,4 @@
-module test
+module github.com/goIdioms/go-jwt-auth-api
 
 go 1.24
 

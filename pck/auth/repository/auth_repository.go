@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"test/pck/database"
-	"test/pck/models"
+
+	"github.com/goIdioms/go-jwt-auth-api/pck/database"
+	"github.com/goIdioms/go-jwt-auth-api/pck/models"
 
 	"go.mongodb.org/mongo-driver/bson"
 )
