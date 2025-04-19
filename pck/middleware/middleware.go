@@ -15,7 +15,6 @@ import (
 )
 
 func DeserializeUser(c *fiber.Ctx) error {
-	// 1. Получаем refresh_token из куки
 	sessionID := c.Cookies("session_id")
 	redisCache := cache.NewRedisCache("localhost:6379")
 	cachedValue, err := redisCache.GetRefreshToken(c.Context(), sessionID)
@@ -55,7 +54,6 @@ func DeserializeUser(c *fiber.Ctx) error {
 		})
 	}
 
-	// 4. Получаем claims
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || claims["sub"] == nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -64,7 +62,6 @@ func DeserializeUser(c *fiber.Ctx) error {
 		})
 	}
 
-	// 5. Получаем user из БД по ID
 	userID := fmt.Sprint(claims["sub"])
 	objectID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
@@ -83,7 +80,6 @@ func DeserializeUser(c *fiber.Ctx) error {
 		})
 	}
 
-	// 6. Устанавливаем пользователя в контекст
 	c.Locals("user", &user)
 	return c.Next()
 }
